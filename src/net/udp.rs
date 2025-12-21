@@ -54,7 +54,13 @@ async fn handle_protocol(
             }
         }
         NetProtocol::Leave => {
-            //TODO
+            let room_id = gs.leave_player(addr);
+            if let Some(room_id) = room_id {
+                let msg = format!("LEFT room_id={:?}", room_id);
+                let buf = msg.as_bytes();
+                let len = socket.send_to(buf, addr).await.unwrap();
+                println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+            };
         }
         NetProtocol::Ping => {
             //TODO

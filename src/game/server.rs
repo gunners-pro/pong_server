@@ -58,6 +58,22 @@ impl GameServer {
 
         (false, None, None, None)
     }
+
+    pub fn leave_player(&mut self, addr: SocketAddr) -> Option<u64> {
+        for (room_id, room) in self.rooms.iter_mut() {
+            let player_to_remove = room
+                .players
+                .iter()
+                .find(|(_, player)| player.addr == addr)
+                .map(|(key, _)| *key);
+
+            if let Some(key) = player_to_remove {
+                room.players.remove(&key);
+                return Some(*room_id);
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
