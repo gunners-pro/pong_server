@@ -1,3 +1,4 @@
+use crate::game::views::RoomInfo;
 use std::{collections::HashMap, net::SocketAddr};
 
 pub struct GameServer {
@@ -74,6 +75,18 @@ impl GameServer {
         }
         None
     }
+
+    pub fn get_rooms_view(&self) -> Vec<RoomInfo> {
+        let mut room_info = Vec::new();
+        for room in self.rooms.values() {
+            room_info.push(RoomInfo {
+                id: room.id,
+                player_count: room.players.len() as u64,
+                max_players: 2,
+            });
+        }
+        room_info
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -85,7 +98,7 @@ pub struct Player {
     pub is_left_player: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Room {
     pub id: u64,
     pub players: HashMap<u64, Player>,

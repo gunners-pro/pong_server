@@ -38,6 +38,21 @@ async fn handle_protocol(
     socket: &UdpSocket,
 ) {
     match protocol {
+        NetProtocol::Connect => {
+            let rooms = gs.get_rooms_view();
+            let msg = format!(
+                "CONNECTOK;{},{},{}|{},{},{}",
+                rooms[0].id,
+                rooms[0].player_count,
+                rooms[0].max_players,
+                rooms[1].id,
+                rooms[1].player_count,
+                rooms[1].max_players,
+            );
+            let buf = msg.as_bytes();
+            let len = socket.send_to(buf, addr).await.unwrap();
+            println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+        }
         NetProtocol::Join => {
             let (joined, room_id, player_id, is_left) = gs.join_player(addr);
             let msg = format!(

@@ -1,4 +1,5 @@
 pub enum NetProtocol {
+    Connect,
     Join,
     Leave,
     Ping,
@@ -12,6 +13,7 @@ pub fn parse_buffer(bytes: &[u8]) -> Result<NetProtocol, ()> {
             Ok(b) => {
                 let b = b.trim_end();
                 match b {
+                    "Connect" => Ok(NetProtocol::Connect),
                     "Join" => Ok(NetProtocol::Join),
                     "Leave" => Ok(NetProtocol::Leave),
                     "Ping" => Ok(NetProtocol::Ping),
