@@ -1,3 +1,4 @@
+mod game;
 mod net;
 
 use crate::net::udp::run_udp;

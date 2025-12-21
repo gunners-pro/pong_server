@@ -1,52 +1,7 @@
-use std::{collections::HashMap, net::SocketAddr};
+use std::net::SocketAddr;
 use tokio::net::UdpSocket;
 
-#[derive(Debug, Clone, Copy)]
-struct Player {
-    id: u64,
-    pos_y: f64,
-    pos_x: f64,
-    addr: SocketAddr,
-    is_left_player: bool,
-}
-
-#[derive(Debug)]
-struct Room {
-    id: u64,
-    players: HashMap<u64, Player>,
-}
-
-struct GameServer {
-    rooms: HashMap<u64, Room>,
-    next_player_id: u64,
-    next_room_id: u64,
-}
-
-impl GameServer {
-    fn new() -> Self {
-        let mut rooms: HashMap<u64, Room> = HashMap::new();
-        rooms.insert(
-            1,
-            Room {
-                id: 1,
-                players: HashMap::new(),
-            },
-        );
-        rooms.insert(
-            2,
-            Room {
-                id: 2,
-                players: HashMap::new(),
-            },
-        );
-
-        Self {
-            rooms,
-            next_player_id: 1,
-            next_room_id: 3,
-        }
-    }
-}
+use crate::game::server::{GameServer, Player};
 
 pub async fn run_udp() {
     let socket = UdpSocket::bind("127.0.0.1:9000")
