@@ -1,7 +1,9 @@
+use crate::{
+    game::server::GameServer,
+    net::protocol::{NetProtocol, parse_buffer},
+};
 use std::net::SocketAddr;
 use tokio::net::UdpSocket;
-
-use crate::game::server::GameServer;
 
 pub async fn run_udp() {
     let socket = UdpSocket::bind("127.0.0.1:9000")
@@ -27,12 +29,6 @@ pub async fn run_udp() {
 
         handle_protocol(msg, addr, &mut game_server, &socket).await;
     }
-}
-
-enum NetProtocol {
-    Join,
-    Leave,
-    Ping,
 }
 
 async fn handle_protocol(
@@ -62,25 +58,6 @@ async fn handle_protocol(
         }
         NetProtocol::Ping => {
             //TODO
-        }
-    }
-}
-
-fn parse_buffer(bytes: &[u8]) -> Result<NetProtocol, ()> {
-    if bytes.is_empty() {
-        Err(()) //TODO
-    } else {
-        match str::from_utf8(bytes) {
-            Ok(b) => {
-                let b = b.trim_end();
-                match b {
-                    "Join" => Ok(NetProtocol::Join),
-                    "Leave" => Ok(NetProtocol::Leave),
-                    "Ping" => Ok(NetProtocol::Ping),
-                    _ => Err(()), //TODO
-                }
-            }
-            _ => Err(()), //TODO
         }
     }
 }
