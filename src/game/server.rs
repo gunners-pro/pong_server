@@ -7,6 +7,15 @@ pub struct GameServer {
     pub next_room_id: u64,
 }
 
+pub struct JoinPlayerResult {
+    pub success: bool,
+    pub room_id: Option<u64>,
+    pub player_id: Option<u64>,
+    pub players: Option<u64>,
+    pub max: Option<u64>,
+    pub is_left_player: Option<bool>,
+}
+
 impl GameServer {
     pub fn new() -> Self {
         let mut rooms: HashMap<u64, Room> = HashMap::new();
@@ -31,8 +40,15 @@ impl GameServer {
     pub fn join_player(
         &mut self,
         addr: SocketAddr,
-    ) -> (bool, Option<u64>, Option<u64>, Option<bool>) {
+        room_to_join_id: Option<u64>,
+    ) -> JoinPlayerResult {
         for (room_id, room) in self.rooms.iter_mut() {
+            if let Some(target_id) = room_to_join_id {
+                if *room_id != target_id {
+                    continue;
+                }
+            }
+
             if room.players.values().any(|player| player.addr == addr) {
                 continue;
             }
@@ -43,21 +59,30 @@ impl GameServer {
                     pos_y: 200.0,
                     pos_x: 20.0,
                     addr,
-                    is_left_player: if room.players.is_empty() { true } else { false },
+                    is_left_player: room.players.is_empty(),
                 };
                 self.next_player_id += 1;
 
                 room.players.insert(player.id, player);
-                return (
-                    true,
-                    Some(*room_id),
-                    Some(player.id),
-                    Some(player.is_left_player),
-                );
+                return JoinPlayerResult {
+                    success: true,
+                    room_id: Some(*room_id),
+                    player_id: Some(player.id),
+                    players: Some(room.players.len() as u64),
+                    max: Some(2),
+                    is_left_player: Some(player.is_left_player),
+                };
             }
         }
 
-        (false, None, None, None)
+        JoinPlayerResult {
+            success: false,
+            room_id: None,
+            player_id: None,
+            players: None,
+            max: None,
+            is_left_player: None,
+        }
     }
 
     pub fn leave_player(&mut self, addr: SocketAddr) -> Option<u64> {

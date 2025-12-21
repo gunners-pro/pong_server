@@ -53,13 +53,17 @@ async fn handle_protocol(
             let len = socket.send_to(buf, addr).await.unwrap();
             println!("{:?}", String::from_utf8_lossy(&buf[..len]));
         }
-        NetProtocol::Join => {
-            let (joined, room_id, player_id, is_left) = gs.join_player(addr);
+        NetProtocol::Join { room_id } => {
+            let join_result = gs.join_player(addr, Some(room_id));
             let msg = format!(
-                "JOINED player_id={:?} room_id={:?} is_left={:?}",
-                player_id, room_id, is_left
+                "JOINEDOK;player_id={} room_id={} players={} max={} is_left={}",
+                join_result.player_id.unwrap_or(0),
+                join_result.room_id.unwrap_or(0),
+                join_result.players.unwrap_or(0),
+                join_result.max.unwrap_or(0),
+                join_result.is_left_player.unwrap_or(false)
             );
-            if joined {
+            if join_result.success {
                 let buf = msg.as_bytes();
                 let len = socket.send_to(buf, addr).await.unwrap();
                 println!("{:?}", String::from_utf8_lossy(&buf[..len]));

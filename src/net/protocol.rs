@@ -1,26 +1,28 @@
 pub enum NetProtocol {
     Connect,
-    Join,
+    Join { room_id: u64 },
     Leave,
     Ping,
 }
 
 pub fn parse_buffer(bytes: &[u8]) -> Result<NetProtocol, ()> {
-    if bytes.is_empty() {
-        Err(()) //TODO
-    } else {
-        match str::from_utf8(bytes) {
-            Ok(b) => {
-                let b = b.trim_end();
-                match b {
-                    "Connect" => Ok(NetProtocol::Connect),
-                    "Join" => Ok(NetProtocol::Join),
-                    "Leave" => Ok(NetProtocol::Leave),
-                    "Ping" => Ok(NetProtocol::Ping),
-                    _ => Err(()), //TODO
-                }
+    let s = std::str::from_utf8(bytes).map_err(|_| ())?.trim_end();
+    let mut parts = s.splitn(2, ';'); // divide em até 2 partes
+    let cmd = parts.next().ok_or(())?;
+    let payload = parts.next();
+    match cmd {
+        "Connect" => Ok(NetProtocol::Connect),
+        "Join" => {
+            if let Some(payload) = payload {
+                let room_id_str = payload.split('=').nth(1).ok_or(())?;
+                let room_id = room_id_str.parse::<u64>().map_err(|_| ())?;
+                Ok(NetProtocol::Join { room_id })
+            } else {
+                Err(()) // Join sem room_id
             }
-            _ => Err(()), //TODO
         }
+        "Leave" => Ok(NetProtocol::Leave),
+        "Ping" => Ok(NetProtocol::Ping),
+        _ => Err(()),
     }
 }
