@@ -39,6 +39,7 @@ async fn handle_protocol(
 ) {
     match protocol {
         NetProtocol::Connect => {
+            gs.clients.insert(addr);
             let rooms = gs.get_rooms_view();
             let msg = format!(
                 "CONNECTOK;{},{},{}|{},{},{}",
@@ -55,6 +56,7 @@ async fn handle_protocol(
         }
         NetProtocol::Join { room_id } => {
             let join_result = gs.join_player(addr, Some(room_id));
+            gs.broadcast_rooms(&socket);
             let msg = format!(
                 "JOINEDOK;player_id={} room_id={} players={} max={} is_left={}",
                 join_result.player_id.unwrap_or(0),
@@ -74,6 +76,7 @@ async fn handle_protocol(
         }
         NetProtocol::Leave => {
             let room_id = gs.leave_player(addr);
+            gs.broadcast_rooms(&socket);
             if let Some(room_id) = room_id {
                 let msg = format!("LEFT room_id={:?}", room_id);
                 let buf = msg.as_bytes();

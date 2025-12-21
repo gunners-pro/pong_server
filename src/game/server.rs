@@ -1,10 +1,16 @@
+use tokio::net::UdpSocket;
+
 use crate::game::views::RoomInfo;
-use std::{collections::HashMap, net::SocketAddr};
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+};
 
 pub struct GameServer {
     pub rooms: HashMap<u64, Room>,
     pub next_player_id: u64,
     pub next_room_id: u64,
+    pub clients: HashSet<SocketAddr>,
 }
 
 pub struct JoinPlayerResult {
@@ -32,6 +38,7 @@ impl GameServer {
 
         Self {
             rooms,
+            clients: HashSet::new(),
             next_player_id: 1,
             next_room_id: 3,
         }
@@ -111,6 +118,21 @@ impl GameServer {
             });
         }
         room_info
+    }
+
+    pub fn broadcast_rooms(&self, socket: &UdpSocket) {
+        let rooms = self.get_rooms_view();
+        let payload = rooms
+            .iter()
+            .map(|r| format!("{},{},{}", r.id, r.player_count, r.max_players))
+            .collect::<Vec<_>>()
+            .join("|");
+
+        let msg = format!("CONNECTOK;{}", payload);
+
+        for addr in &self.clients {
+            let _ = socket.try_send_to(msg.as_bytes(), *addr);
+        }
     }
 }
 
