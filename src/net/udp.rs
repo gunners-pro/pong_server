@@ -1,7 +1,6 @@
-use std::net::SocketAddr;
 use tokio::net::UdpSocket;
 
-use crate::game::server::{GameServer, Player};
+use crate::game::server::GameServer;
 
 pub async fn run_udp() {
     let socket = UdpSocket::bind("127.0.0.1:9000")
@@ -17,26 +16,18 @@ pub async fn run_udp() {
             .await
             .expect("Falha ao receber dados no buffer.");
 
-        handle_connect(&mut game_server, addr).await;
-    }
-}
-
-async fn handle_connect(server: &mut GameServer, addr: SocketAddr) {
-    let player = Player {
-        id: server.next_player_id,
-        pos_y: 200.0,
-        pos_x: 20.0,
-        addr,
-        is_left_player: true,
-    };
-    server.next_player_id += 1;
-    for room in server.rooms.values_mut() {
-        if room.players.len() < 2 {
-            room.players.insert(player.id, player);
-            break;
+        let (joined, room_id, player_id, is_left) = game_server.join_player(addr);
+        let msg = format!(
+            "JOINED player_id={:?} room_id={:?} is_left={:?}",
+            player_id, room_id, is_left
+        );
+        if joined {
+            let buf = msg.as_bytes();
+            let len = socket.send_to(buf, addr).await.unwrap();
+            println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+        } else {
+            let buf = b"JOIN_FAIL";
+            let _ = socket.send_to(buf, addr);
         }
-    }
-    for r in server.rooms.values() {
-        println!("salas: {:?}", r);
     }
 }
