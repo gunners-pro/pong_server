@@ -1,10 +1,9 @@
-use tokio::net::UdpSocket;
-
 use crate::game::views::RoomInfo;
 use std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
 };
+use tokio::net::UdpSocket;
 
 pub struct GameServer {
     pub rooms: HashMap<u64, Room>,
@@ -49,6 +48,17 @@ impl GameServer {
         addr: SocketAddr,
         room_to_join_id: Option<u64>,
     ) -> JoinPlayerResult {
+        if let Some(existing_room) = self.find_player_room(addr) {
+            return JoinPlayerResult {
+                success: false,
+                room_id: Some(existing_room),
+                player_id: None,
+                players: None,
+                max: None,
+                is_left_player: None,
+            };
+        }
+
         for (room_id, room) in self.rooms.iter_mut() {
             if let Some(target_id) = room_to_join_id {
                 if *room_id != target_id {
@@ -92,8 +102,8 @@ impl GameServer {
         }
     }
 
-    pub fn leave_player(&mut self, addr: SocketAddr) -> Option<u64> {
-        for (room_id, room) in self.rooms.iter_mut() {
+    pub fn leave_player(&mut self, addr: SocketAddr, room_id: u64) -> bool {
+        if let Some(room) = self.rooms.get_mut(&room_id) {
             let player_to_remove = room
                 .players
                 .iter()
@@ -102,10 +112,10 @@ impl GameServer {
 
             if let Some(key) = player_to_remove {
                 room.players.remove(&key);
-                return Some(*room_id);
+                return true;
             }
         }
-        None
+        false
     }
 
     pub fn get_rooms_view(&self) -> Vec<RoomInfo> {
@@ -133,6 +143,15 @@ impl GameServer {
         for addr in &self.clients {
             let _ = socket.try_send_to(msg.as_bytes(), *addr);
         }
+    }
+
+    fn find_player_room(&self, addr: SocketAddr) -> Option<u64> {
+        for (room_id, room) in &self.rooms {
+            if room.players.values().any(|p| p.addr == addr) {
+                return Some(*room_id);
+            }
+        }
+        None
     }
 }
 
