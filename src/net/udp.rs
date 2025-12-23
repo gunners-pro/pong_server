@@ -1,5 +1,5 @@
 use crate::{
-    game::server::GameServer,
+    game::server::{GameServer, JoinError},
     net::protocol::{NetProtocol, parse_buffer},
 };
 use std::net::SocketAddr;
@@ -54,26 +54,39 @@ async fn handle_protocol(
             let len = socket.send_to(buf, addr).await.unwrap();
             println!("{:?}", String::from_utf8_lossy(&buf[..len]));
         }
-        NetProtocol::Join { room_id } => {
-            let join_result = gs.join_player(addr, Some(room_id));
-            gs.broadcast_rooms(&socket);
-            let msg = format!(
-                "JOINEDOK;player_id={} room_id={} players={} max={} is_left={}",
-                join_result.player_id.unwrap_or(0),
-                join_result.room_id.unwrap_or(0),
-                join_result.players.unwrap_or(0),
-                join_result.max.unwrap_or(0),
-                join_result.is_left_player.unwrap_or(false)
-            );
-            if join_result.success {
-                let buf = msg.as_bytes();
-                let len = socket.send_to(buf, addr).await.unwrap();
-                println!("{:?}", String::from_utf8_lossy(&buf[..len]));
-            } else {
-                let buf = b"JOIN_FAIL";
-                let _ = socket.send_to(buf, addr);
+        NetProtocol::Join { room_id } => match gs.join_player(addr, Some(room_id)) {
+            Ok(result) => {
+                gs.broadcast_rooms(&socket);
+
+                let msg = format!(
+                    "JOINEDOK;player_id={} room_id={} players={} max={} is_left={}",
+                    result.player_id.unwrap(),
+                    result.room_id.unwrap(),
+                    result.players.unwrap(),
+                    result.max.unwrap(),
+                    result.is_left_player.unwrap()
+                );
+
+                let _ = socket.send_to(msg.as_bytes(), addr).await;
             }
-        }
+
+            Err(JoinError::AlreadyInRoom { room_id }) => {
+                let msg = format!("JOIN_FAIL;reason=ALREADY_IN_ROOM room_id={}", room_id);
+                let _ = socket.send_to(msg.as_bytes(), addr).await;
+            }
+
+            Err(JoinError::RoomFull) => {
+                let msg = "JOIN_FAIL;reason=ROOM_FULL";
+                let _ = socket.send_to(msg.as_bytes(), addr).await;
+            }
+
+            Err(JoinError::RoomNotFound) => {
+                socket
+                    .send_to(b"JOIN_FAIL;reason=ROOM_NOT_FOUND", addr)
+                    .await
+                    .unwrap();
+            }
+        },
         NetProtocol::Leave { room_id } => {
             let is_success = gs.leave_player(addr, room_id);
             gs.broadcast_rooms(&socket);

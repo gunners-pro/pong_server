@@ -5,6 +5,13 @@ use std::{
 };
 use tokio::net::UdpSocket;
 
+#[derive(Debug)]
+pub enum JoinError {
+    AlreadyInRoom { room_id: u64 },
+    RoomNotFound,
+    RoomFull,
+}
+
 pub struct GameServer {
     pub rooms: HashMap<u64, Room>,
     pub next_player_id: u64,
@@ -47,16 +54,11 @@ impl GameServer {
         &mut self,
         addr: SocketAddr,
         room_to_join_id: Option<u64>,
-    ) -> JoinPlayerResult {
+    ) -> Result<JoinPlayerResult, JoinError> {
         if let Some(existing_room) = self.find_player_room(addr) {
-            return JoinPlayerResult {
-                success: false,
-                room_id: Some(existing_room),
-                player_id: None,
-                players: None,
-                max: None,
-                is_left_player: None,
-            };
+            return Err(JoinError::AlreadyInRoom {
+                room_id: existing_room,
+            });
         }
 
         for (room_id, room) in self.rooms.iter_mut() {
@@ -66,40 +68,32 @@ impl GameServer {
                 }
             }
 
-            if room.players.values().any(|player| player.addr == addr) {
-                continue;
+            if room.players.len() >= 2 {
+                return Err(JoinError::RoomFull);
             }
 
-            if room.players.len() < 2 {
-                let player = Player {
-                    id: self.next_player_id,
-                    pos_y: 200.0,
-                    pos_x: 20.0,
-                    addr,
-                    is_left_player: room.players.is_empty(),
-                };
-                self.next_player_id += 1;
+            let player = Player {
+                id: self.next_player_id,
+                pos_y: 200.0,
+                pos_x: 20.0,
+                addr,
+                is_left_player: room.players.is_empty(),
+            };
+            self.next_player_id += 1;
 
-                room.players.insert(player.id, player);
-                return JoinPlayerResult {
-                    success: true,
-                    room_id: Some(*room_id),
-                    player_id: Some(player.id),
-                    players: Some(room.players.len() as u64),
-                    max: Some(2),
-                    is_left_player: Some(player.is_left_player),
-                };
-            }
+            room.players.insert(player.id, player);
+
+            return Ok(JoinPlayerResult {
+                success: true,
+                room_id: Some(*room_id),
+                player_id: Some(player.id),
+                players: Some(room.players.len() as u64),
+                max: Some(2),
+                is_left_player: Some(player.is_left_player),
+            });
         }
 
-        JoinPlayerResult {
-            success: false,
-            room_id: None,
-            player_id: None,
-            players: None,
-            max: None,
-            is_left_player: None,
-        }
+        Err(JoinError::RoomNotFound)
     }
 
     pub fn leave_player(&mut self, addr: SocketAddr, room_id: u64) -> bool {
