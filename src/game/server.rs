@@ -15,12 +15,10 @@ pub enum JoinError {
 pub struct GameServer {
     pub rooms: HashMap<u64, Room>,
     pub next_player_id: u64,
-    pub next_room_id: u64,
     pub clients: HashSet<SocketAddr>,
 }
 
 pub struct JoinPlayerResult {
-    pub success: bool,
     pub room_id: Option<u64>,
     pub player_id: Option<u64>,
     pub players: Option<u64>,
@@ -46,7 +44,6 @@ impl GameServer {
             rooms,
             clients: HashSet::new(),
             next_player_id: 1,
-            next_room_id: 3,
         }
     }
 
@@ -84,7 +81,6 @@ impl GameServer {
             room.players.insert(player.id, player);
 
             return Ok(JoinPlayerResult {
-                success: true,
                 room_id: Some(*room_id),
                 player_id: Some(player.id),
                 players: Some(room.players.len() as u64),
