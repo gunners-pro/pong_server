@@ -99,15 +99,15 @@ async fn handle_protocol(
             }
         },
         NetProtocol::Leave { room_id } => {
-            // let is_success = gs.leave_player(addr, room_id);
-            // gs.broadcast_rooms(&socket);
+            let is_success = gs.leave_player(addr, room_id);
+            gs.broadcast_rooms(&socket);
 
-            // if is_success {
-            //     let msg = format!("LEAVEOK;room_id={}", room_id);
-            //     let buf = msg.as_bytes();
-            //     let len = socket.send_to(buf, addr).await.unwrap();
-            //     println!("{:?}", String::from_utf8_lossy(&buf[..len]));
-            // }
+            if is_success {
+                let msg = format!("LEAVEOK;room_id={}", room_id);
+                let buf = msg.as_bytes();
+                let len = socket.send_to(buf, addr).await.unwrap();
+                println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+            }
         }
         NetProtocol::Ping => {
             //TODO

@@ -98,21 +98,28 @@ impl GameServer {
         });
     }
 
-    // pub fn leave_player(&mut self, addr: SocketAddr, room_id: u64) -> bool {
-    //     if let Some(room) = self.rooms.get_mut(&room_id) {
-    //         let player_to_remove = room
-    //             .players
-    //             .iter()
-    //             .find(|(_, player)| player.addr == addr)
-    //             .map(|(key, _)| *key);
+    pub fn leave_player(&mut self, addr: SocketAddr, room_id: u64) -> bool {
+        let player = self
+            .players
+            .get_mut(&addr)
+            .ok_or(JoinError::PlayerNotFound)
+            .expect("");
 
-    //         if let Some(key) = player_to_remove {
-    //             room.players.remove(&key);
-    //             return true;
-    //         }
-    //     }
-    //     false
-    // }
+        let room = self
+            .rooms
+            .get_mut(&room_id)
+            .ok_or(JoinError::RoomNotFound)
+            .expect("");
+
+        if room.players.contains(&player.id) {
+            if room.players.remove(&player.id) {
+                player.room_id = None;
+                return true;
+            }
+        }
+
+        false
+    }
 
     pub fn get_rooms_view(&self) -> Vec<RoomInfo> {
         let mut room_info = Vec::new();
@@ -142,7 +149,6 @@ impl GameServer {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct Player {
     pub id: u64,
     pub addr: SocketAddr,
