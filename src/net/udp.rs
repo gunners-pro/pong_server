@@ -39,7 +39,13 @@ async fn handle_protocol(
 ) {
     match protocol {
         NetProtocol::Connect => {
+            //Insere cada Cliente para futuro broadcast
             gs.clients.insert(addr);
+
+            //chamar uma função para criar player ao se conectar com o cliente
+            gs.create_player(addr);
+
+            //envia valores iniciais da room ao se conectar com o cliente(game)
             let rooms = gs.get_rooms_view();
             let msg = format!(
                 "CONNECTOK;{},{},{}|{},{},{}",
@@ -51,20 +57,18 @@ async fn handle_protocol(
                 rooms[1].max_players,
             );
             let buf = msg.as_bytes();
-            let len = socket.send_to(buf, addr).await.unwrap();
-            println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+            let _ = socket.send_to(buf, addr).await.unwrap();
         }
-        NetProtocol::Join { room_id } => match gs.join_player(addr, Some(room_id)) {
+        NetProtocol::Join { room_id } => match gs.join_player(addr, room_id) {
             Ok(result) => {
                 gs.broadcast_rooms(&socket);
 
                 let msg = format!(
-                    "JOINEDOK;player_id={} room_id={} players={} max={} is_left={}",
+                    "JOINEDOK;player_id={} room_id={} players={} max={}",
                     result.player_id.unwrap(),
                     result.room_id.unwrap(),
                     result.players.unwrap(),
                     result.max.unwrap(),
-                    result.is_left_player.unwrap()
                 );
 
                 let _ = socket.send_to(msg.as_bytes(), addr).await;
@@ -86,17 +90,24 @@ async fn handle_protocol(
                     .await
                     .unwrap();
             }
+
+            Err(JoinError::PlayerNotFound) => {
+                socket
+                    .send_to(b"JOIN_FAIL;reason=PLAYER_NOT_FOUND", addr)
+                    .await
+                    .unwrap();
+            }
         },
         NetProtocol::Leave { room_id } => {
-            let is_success = gs.leave_player(addr, room_id);
-            gs.broadcast_rooms(&socket);
+            // let is_success = gs.leave_player(addr, room_id);
+            // gs.broadcast_rooms(&socket);
 
-            if is_success {
-                let msg = format!("LEAVEOK;room_id={}", room_id);
-                let buf = msg.as_bytes();
-                let len = socket.send_to(buf, addr).await.unwrap();
-                println!("{:?}", String::from_utf8_lossy(&buf[..len]));
-            }
+            // if is_success {
+            //     let msg = format!("LEAVEOK;room_id={}", room_id);
+            //     let buf = msg.as_bytes();
+            //     let len = socket.send_to(buf, addr).await.unwrap();
+            //     println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+            // }
         }
         NetProtocol::Ping => {
             //TODO
