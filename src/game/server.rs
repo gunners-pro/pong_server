@@ -121,6 +121,25 @@ impl GameServer {
         false
     }
 
+    pub fn set_player_ready(&self, room_id: u64) -> bool {
+        let room = match self.rooms.get(&room_id) {
+            Some(r) => r,
+            None => return false,
+        };
+
+        if room.players.len() < 2 {
+            return false;
+        }
+
+        room.players.iter().all(|player_id| {
+            self.players
+                .values()
+                .find(|p| p.id == *player_id)
+                .map(|p| p.is_ready)
+                .unwrap_or(false)
+        })
+    }
+
     pub fn get_rooms_view(&self) -> Vec<RoomInfo> {
         let mut room_info = Vec::new();
         for (room_id, room) in &self.rooms {

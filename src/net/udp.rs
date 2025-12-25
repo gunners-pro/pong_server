@@ -105,8 +105,15 @@ async fn handle_protocol(
             if is_success {
                 let msg = format!("LEAVEOK;room_id={}", room_id);
                 let buf = msg.as_bytes();
-                let len = socket.send_to(buf, addr).await.unwrap();
-                println!("{:?}", String::from_utf8_lossy(&buf[..len]));
+                let _ = socket.send_to(buf, addr).await.unwrap();
+            }
+        }
+        NetProtocol::Ready { room_id } => {
+            let is_ready = gs.set_player_ready(room_id);
+            if is_ready {
+                let msg = format!("READYOK;");
+                let buf = msg.as_bytes();
+                let _ = socket.send_to(buf, addr).await.unwrap();
             }
         }
         NetProtocol::Ping => {
